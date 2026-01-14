@@ -1,195 +1,96 @@
-// ==============================
-// MythicAi – app.js (STABLE)
-// ==============================
-
 const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
 
-// Persistent memory
 let conversation = JSON.parse(
   localStorage.getItem("mythicai_conversation")
 ) || [];
 
-let isGenerating = false;
+// ------------------
+// Restore chat
+// ------------------
+function restoreMessages() {
+  const messages = document.getElementById("messages");
+  messages.innerHTML = "";
 
-// Modes
-const modePrompts = {
-  general: "You are MythicAi. Professional, friendly, chill.",
-  study: "You are MythicAi in study mode. Explain clearly with examples.",
-  coding: "You are MythicAi in coding mode. Give clean, correct code.",
-  editing: "You are MythicAi in editing mode. Help with CapCut, motion blur, workflows."
-};
+  conversation.forEach(m => {
+    messages.innerHTML +=
+      `<div class="msg ${m.role === "user" ? "user" : "ai"}">${m.content}</div>`;
+  });
 
-// ------------------------------
-// Utilities
-// ------------------------------
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  messages.scrollTop = messages.scrollHeight;
 }
 
-function saveConversation() {
+// ------------------
+// Send message (STREAM)
+// ------------------
+async function send() {
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  const messagesDiv = document.getElementById("messages");
+
+  messagesDiv.innerHTML += `<div class="msg user">${text}</div>`;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  conversation.push({ role: "user", content: text });
+
+  const aiBubble = document.createElement("div");
+  aiBubble.className = "msg ai";
+  messagesDiv.appendChild(aiBubble);
+
+  const cursor = document.createElement("span");
+  cursor.textContent = "●";
+  cursor.style.color = "#7dd3fc";
+  cursor.style.marginLeft = "4px";
+  aiBubble.appendChild(cursor);
+
+  const res = await fetch(WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: conversation })
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+
+  let fullText = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      if (line.includes("[DONE]")) continue;
+
+      try {
+        const json = JSON.parse(line.replace("data:", "").trim());
+        const token = json.choices?.[0]?.delta?.content;
+        if (token) {
+          fullText += token;
+          cursor.insertAdjacentText("beforebegin", token);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      } catch {}
+    }
+  }
+
+  cursor.remove();
+
+  conversation.push({ role: "assistant", content: fullText });
   localStorage.setItem(
     "mythicai_conversation",
     JSON.stringify(conversation)
   );
 }
 
-// Limit context to avoid token errors
-function getTrimmedConversation(max = 12) {
-  const system = conversation.find(m => m.role === "system");
-  const recent = conversation.filter(m => m.role !== "system").slice(-max);
-  return system ? [system, ...recent] : recent;
-}
-
-// ------------------------------
-// Restore UI on refresh
-// ------------------------------
-function restoreMessages() {
-  const messages = document.getElementById("messages");
-  messages.innerHTML = "";
-
-  conversation.forEach(m => {
-    if (m.role === "user") {
-      messages.innerHTML += `<div class="msg user">${m.content}</div>`;
-    }
-    if (m.role === "assistant") {
-      messages.innerHTML += `<div class="msg ai">${m.content}</div>`;
-    }
-  });
-
-  messages.scrollTop = messages.scrollHeight;
-}
-
-// ------------------------------
-// Cursor dot
-// ------------------------------
-function createCursor() {
-  const cursor = document.createElement("span");
-  cursor.textContent = "●";
-  cursor.style.marginLeft = "4px";
-  cursor.style.color = "#7dd3fc";
-  cursor.style.opacity = "0.85";
-  return cursor;
-}
-
-// ------------------------------
-// Human-like typing
-// ------------------------------
-async function typeLikeHuman(element, text) {
-  isGenerating = true;
-  element.innerHTML = "";
-
-  const words = text.split(" ");
-  const cursor = createCursor();
-  element.appendChild(cursor);
-
-  // Thinking delay
-  await sleep(500 + Math.random() * 600);
-
-  for (let i = 0; i < words.length; i++) {
-    element.insertBefore(
-      document.createTextNode(words[i] + " "),
-      cursor
-    );
-
-    element.scrollIntoView({ block: "end", behavior: "smooth" });
-
-    let delay = 70 + Math.random() * 120;
-    if (/[.,!?]$/.test(words[i])) delay += 250;
-    if (words[i].length > 8) delay += 100;
-
-    await sleep(delay);
-  }
-
-  cursor.remove();
-  element.textContent = element.textContent.trim();
-  isGenerating = false;
-}
-
-// ------------------------------
-// Fetch with retry (free-tier safe)
-// ------------------------------
-async function fetchWithRetry(payload, retries = 2) {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const res = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (!data.error && data.choices) return data;
-    } catch (_) {}
-
-    await sleep(600);
-  }
-
-  return {
-    error: { message: "AI is busy. Please try again." }
-  };
-}
-
-// ------------------------------
-// Send message
-// ------------------------------
-async function send() {
-  if (isGenerating) return;
-
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text) return;
-
-  input.value = "";
-  const messages = document.getElementById("messages");
-  const mode = document.getElementById("mode").value;
-
-  // User bubble
-  messages.innerHTML += `<div class="msg user">${text}</div>`;
-  messages.scrollTop = messages.scrollHeight;
-
-  // System prompt once
-  if (!conversation.some(m => m.role === "system")) {
-    conversation.unshift({
-      role: "system",
-      content: modePrompts[mode]
-    });
-  }
-
-  conversation.push({ role: "user", content: text });
-  saveConversation();
-
-  // AI bubble
-  const aiBubble = document.createElement("div");
-  aiBubble.className = "msg ai";
-  messages.appendChild(aiBubble);
-  messages.scrollTop = messages.scrollHeight;
-
-  const data = await fetchWithRetry({
-    messages: getTrimmedConversation()
-  });
-
-  if (data.error) {
-    await typeLikeHuman(aiBubble, "⚠️ " + data.error.message);
-    return;
-  }
-
-  const reply = data.choices[0].message.content;
-
-  await typeLikeHuman(aiBubble, reply);
-
-  conversation.push({
-    role: "assistant",
-    content: reply
-  });
-  saveConversation();
-}
-
-// ------------------------------
-// Init
-// ------------------------------
+// ------------------
 document.addEventListener("DOMContentLoaded", () => {
   restoreMessages();
-
   document.getElementById("input").addEventListener("keydown", e => {
     if (e.key === "Enter") send();
   });
