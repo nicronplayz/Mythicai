@@ -1,52 +1,70 @@
 // ==============================
-// MythicAi – app.js
+// MythicAi – app.js (Typing UX)
 // ==============================
 
-// 🔗 Backend URL
 const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
 
-// 🧠 Load conversation from localStorage (persistent)
+// Load saved conversation
 let conversation = JSON.parse(
   localStorage.getItem("mythicai_conversation")
 ) || [];
 
-// 🎛 Mode system prompts
+// Mode prompts
 const modePrompts = {
-  general:
-    "You are MythicAi. Professional, friendly, chill.",
-  study:
-    "You are MythicAi in study mode. Explain concepts clearly with simple examples.",
-  coding:
-    "You are MythicAi in coding mode. Write clean, correct code with brief explanations.",
-  editing:
-    "You are MythicAi in editing mode. Help with CapCut, motion blur, effects, and workflows."
+  general: "You are MythicAi. Professional, friendly, chill.",
+  study: "You are MythicAi in study mode. Explain clearly with examples.",
+  coding: "You are MythicAi in coding mode. Give clean, correct code.",
+  editing: "You are MythicAi in editing mode. Help with CapCut, motion blur, workflows."
 };
 
-// 🔁 Restore messages on page load
+// Restore messages
 function restoreMessages() {
   const messagesDiv = document.getElementById("messages");
   messagesDiv.innerHTML = "";
 
   conversation.forEach(msg => {
     if (msg.role === "user") {
-      messagesDiv.innerHTML +=
-        `<div class="msg user">${msg.content}</div>`;
+      messagesDiv.innerHTML += `<div class="msg user">${msg.content}</div>`;
     }
     if (msg.role === "assistant") {
-      messagesDiv.innerHTML +=
-        `<div class="msg ai">${msg.content}</div>`;
+      messagesDiv.innerHTML += `<div class="msg ai">${msg.content}</div>`;
     }
   });
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// 💾 Save conversation
+// Save memory
 function saveConversation() {
   localStorage.setItem(
     "mythicai_conversation",
     JSON.stringify(conversation)
   );
+}
+
+// ⌨️ TYPEWRITER EFFECT
+async function typeText(element, text, speed = 18) {
+  let i = 0;
+  element.innerHTML = "";
+
+  const cursor = document.createElement("span");
+  cursor.textContent = "●";
+  cursor.style.marginLeft = "4px";
+  cursor.style.color = "#7dd3fc";
+  cursor.style.opacity = "0.8";
+
+  element.appendChild(cursor);
+
+  while (i < text.length) {
+    element.insertBefore(
+      document.createTextNode(text.charAt(i)),
+      cursor
+    );
+    i++;
+    await new Promise(r => setTimeout(r, speed));
+  }
+
+  cursor.remove(); // remove dot when done
 }
 
 // 🚀 Send message
@@ -59,14 +77,11 @@ async function send() {
   const messagesDiv = document.getElementById("messages");
   const mode = document.getElementById("mode").value;
 
-  // UI: show user message
-  messagesDiv.innerHTML +=
-    `<div class="msg user">${text}</div>`;
-  messagesDiv.innerHTML +=
-    `<div class="msg ai typing" id="typing">MythicAi is thinking…</div>`;
+  // User message
+  messagesDiv.innerHTML += `<div class="msg user">${text}</div>`;
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-  // 🧠 Add system prompt once
+  // System prompt (once)
   if (!conversation.some(m => m.role === "system")) {
     conversation.unshift({
       role: "system",
@@ -74,9 +89,14 @@ async function send() {
     });
   }
 
-  // Add user message
   conversation.push({ role: "user", content: text });
   saveConversation();
+
+  // Placeholder AI bubble
+  const aiBubble = document.createElement("div");
+  aiBubble.className = "msg ai";
+  messagesDiv.appendChild(aiBubble);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
   try {
     const res = await fetch(WORKER_URL, {
@@ -86,45 +106,31 @@ async function send() {
     });
 
     const data = await res.json();
-    document.getElementById("typing")?.remove();
-
     const reply =
       data?.choices?.[0]?.message?.content ||
       "Sorry, I couldn’t generate a response.";
 
-    // Save AI reply
+    // Type the reply slowly ✨
+    await typeText(aiBubble, reply, 16);
+
     conversation.push({
       role: "assistant",
       content: reply
     });
     saveConversation();
 
-    // UI: show AI reply
-    messagesDiv.innerHTML +=
-      `<div class="msg ai">${reply}</div>`;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
   } catch (err) {
-    document.getElementById("typing")?.remove();
-    messagesDiv.innerHTML +=
-      `<div class="msg ai">⚠️ Error connecting to MythicAi.</div>`;
+    aiBubble.textContent = "⚠️ Error connecting to MythicAi.";
   }
 }
 
-// ⌨ Enter key support
+// Enter key
 document.addEventListener("DOMContentLoaded", () => {
   restoreMessages();
 
-  document
-    .getElementById("input")
-    .addEventListener("keydown", e => {
-      if (e.key === "Enter") send();
-    });
+  document.getElementById("input").addEventListener("keydown", e => {
+    if (e.key === "Enter") send();
+  });
 });
-
-// 🧹 Optional: clear chat
-function clearChat() {
-  localStorage.removeItem("mythicai_conversation");
-  conversation = [];
-  restoreMessages();
-}
