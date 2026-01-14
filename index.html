@@ -1,72 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>MythicAi</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
     body {
       margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617);
       color: white;
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
     }
+
     #chat {
       width: 100%;
       max-width: 420px;
       height: 90vh;
-      background: #020617;
-      border-radius: 14px;
+      background: rgba(2, 6, 23, 0.9);
+      border-radius: 16px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
     }
+
     header {
       padding: 14px;
-      text-align: center;
-      background: #020617;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid #1e293b;
       font-weight: 600;
     }
+
+    header select {
+      background: #020617;
+      color: white;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 6px;
+    }
+
     #messages {
       flex: 1;
-      padding: 12px;
+      padding: 14px;
       overflow-y: auto;
     }
+
     .msg {
-      margin-bottom: 10px;
-      line-height: 1.4;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      max-width: 85%;
+      word-wrap: break-word;
     }
+
     .user {
+      margin-left: auto;
       text-align: right;
       color: #a5f3fc;
+      background: rgba(56,189,248,0.1);
+      padding: 8px 12px;
+      border-radius: 12px 12px 0 12px;
     }
+
     .ai {
-      text-align: left;
+      margin-right: auto;
       color: #38bdf8;
+      background: rgba(15,23,42,0.9);
+      padding: 8px 12px;
+      border-radius: 12px 12px 12px 0;
     }
+
+    .typing {
+      opacity: 0.6;
+      font-style: italic;
+    }
+
     footer {
       display: flex;
       padding: 10px;
       border-top: 1px solid #1e293b;
     }
+
     input {
       flex: 1;
       padding: 10px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: none;
       outline: none;
       background: #020617;
       color: white;
     }
+
     button {
       margin-left: 8px;
-      padding: 10px 14px;
-      border-radius: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
       border: none;
       background: #38bdf8;
       color: #020617;
@@ -77,10 +112,20 @@
 
 <body>
   <div id="chat">
-    <header>MythicAi</header>
+    <header>
+      <span>MythicAi</span>
+      <select id="mode">
+        <option value="general">General</option>
+        <option value="study">Study</option>
+        <option value="coding">Coding</option>
+        <option value="editing">Editing</option>
+      </select>
+    </header>
+
     <div id="messages"></div>
+
     <footer>
-      <input id="input" placeholder="Ask MythicAi..." />
+      <input id="input" placeholder="Ask MythicAi…" />
       <button onclick="send()">Send</button>
     </footer>
   </div>
@@ -88,30 +133,58 @@
 <script>
 const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
 
+let conversation = [];
+
+const modePrompts = {
+  general: "You are MythicAi. Answer normally in a professional, friendly, chill tone.",
+  study: "You are MythicAi in study mode. Explain clearly, step by step, with simple examples.",
+  coding: "You are MythicAi in coding mode. Give clean, correct code with brief explanations.",
+  editing: "You are MythicAi in video editing mode. Help with CapCut, motion blur, effects, and workflows."
+};
+
 async function send() {
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
 
-  const messages = document.getElementById("messages");
-  messages.innerHTML += `<div class="msg user">${text}</div>`;
-  messages.scrollTop = messages.scrollHeight;
+  const messagesDiv = document.getElementById("messages");
+  const mode = document.getElementById("mode").value;
+
+  messagesDiv.innerHTML += `<div class="msg user">${text}</div>`;
+  messagesDiv.innerHTML += `<div class="msg ai typing" id="typing">MythicAi is thinking…</div>`;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  if (conversation.length === 0) {
+    conversation.push({
+      role: "system",
+      content: modePrompts[mode]
+    });
+  }
+
+  conversation.push({ role: "user", content: text });
 
   const res = await fetch(WORKER_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      messages: [{ role: "user", content: text }]
+      messages: conversation
     })
   });
 
   const data = await res.json();
-  const reply = data.choices[0].message.content;
+  document.getElementById("typing").remove();
 
-  messages.innerHTML += `<div class="msg ai">${reply}</div>`;
-  messages.scrollTop = messages.scrollHeight;
+  const reply = data.choices[0].message.content;
+  conversation.push({ role: "assistant", content: reply });
+
+  messagesDiv.innerHTML += `<div class="msg ai">${reply}</div>`;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
+
+document.getElementById("input").addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
 </script>
 </body>
 </html>
