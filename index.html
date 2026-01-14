@@ -1,225 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>MythicAi</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#020617">
+  <meta charset="UTF-8" />
+  <title>MythicAi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#020617" />
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json" />
 
-<style>
-:root {
-  --bg-dark: #020617;
-  --glass: rgba(255,255,255,0.08);
-  --border: rgba(255,255,255,0.15);
-  --accent: #7dd3fc;
-}
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.15);
+      --accent: #7dd3fc;
+    }
 
-* { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  height: 100vh;
-  overflow: hidden;
-  background: radial-gradient(circle at top, #1e3a8a, #020617);
-  color: white;
-}
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, #1e3a8a, transparent 40%),
+        radial-gradient(circle at 80% 30%, #312e81, transparent 40%),
+        radial-gradient(circle at 50% 80%, #020617, #020617);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
 
-/* STAR BACKGROUND */
-.stars {
-  position: fixed;
-  inset: 0;
-  background: url("https://raw.githubusercontent.com/VincentGarreau/particles.js/master/demo/media/star.png");
-  animation: drift 120s linear infinite;
-  opacity: 0.15;
-}
-@keyframes drift {
-  from { background-position: 0 0; }
-  to { background-position: -2000px 2000px; }
-}
+    /* APP CONTAINER */
+    #app {
+      width: 100%;
+      max-width: 480px;
+      height: 92vh;
+      background: linear-gradient(
+        to bottom right,
+        rgba(255,255,255,0.12),
+        rgba(255,255,255,0.03)
+      );
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.7);
+    }
 
-/* APP */
-#app {
-  position: relative;
-  z-index: 2;
-  max-width: 480px;
-  height: 92vh;
-  margin: auto;
-  top: 4vh;
-  display: flex;
-  flex-direction: column;
-  backdrop-filter: blur(18px);
-  background: linear-gradient(
-    to bottom right,
-    rgba(255,255,255,0.12),
-    rgba(255,255,255,0.03)
-  );
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  overflow: hidden;
-}
+    /* HEADER */
+    header {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: rgba(2,6,23,0.6);
+      font-weight: 600;
+    }
 
-/* HEADER */
-header {
-  padding: 14px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  background: rgba(2,6,23,0.7);
-}
+    header select {
+      background: rgba(255,255,255,0.06);
+      color: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      outline: none;
+    }
 
-header select, header button {
-  background: var(--glass);
-  color: white;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px 10px;
-}
+    /* MESSAGES */
+    #messages {
+      flex: 1;
+      padding: 18px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    #messages::-webkit-scrollbar {
+      display: none;
+    }
 
-/* MESSAGES */
-#messages {
-  flex: 1;
-  padding: 18px;
-  overflow-y: auto;
-}
-.msg {
-  max-width: 85%;
-  margin-bottom: 14px;
-  padding: 10px 14px;
-  line-height: 1.5;
-  animation: fadeUp 0.25s ease;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+    .msg {
+      max-width: 85%;
+      margin-bottom: 14px;
+      padding: 10px 14px;
+      line-height: 1.5;
+      font-size: 15px;
+      animation: fadeUp 0.25s ease;
+    }
 
-.user {
-  margin-left: auto;
-  background: linear-gradient(to right, #38bdf8, #0ea5e9);
-  color: #020617;
-  border-radius: 14px 14px 4px 14px;
-}
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-.ai {
-  background: var(--glass);
-  border: 1px solid var(--border);
-  border-radius: 14px 14px 14px 4px;
-}
+    /* USER MESSAGE */
+    .user {
+      margin-left: auto;
+      color: #020617;
+      background: linear-gradient(
+        to right,
+        rgba(56,189,248,0.9),
+        rgba(14,165,233,0.9)
+      );
+      border-radius: 14px 14px 4px 14px;
+    }
 
-.typing {
-  opacity: 0.6;
-  font-style: italic;
-}
+    /* AI MESSAGE */
+    .ai {
+      margin-right: auto;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 14px 14px 14px 4px;
+      position: relative;
+      overflow: visible;
+    }
 
-/* INPUT */
-footer {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  border-top: 1px solid var(--border);
-  background: rgba(2,6,23,0.7);
-}
+    /* ✨ FOLLOW DOT */
+    .ai::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      top: 14px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(125,211,252,0.8);
+      animation: dotFollow 0.4s ease forwards;
+    }
 
-input {
-  flex: 1;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  color: white;
-  outline: none;
-}
+    @keyframes dotFollow {
+      0% {
+        opacity: 0;
+        transform: translateX(-6px);
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(6px);
+      }
+    }
 
-button.send {
-  padding: 12px 18px;
-  border-radius: 14px;
-  border: none;
-  background: linear-gradient(to right, #38bdf8, #0ea5e9);
-  color: #020617;
-  font-weight: 600;
-}
-</style>
+    .typing {
+      opacity: 0.6;
+      font-style: italic;
+    }
+
+    /* INPUT BAR */
+    footer {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(2,6,23,0.7);
+    }
+
+    input {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      outline: none;
+    }
+
+    button {
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(
+        to right,
+        #38bdf8,
+        #0ea5e9
+      );
+      color: #020617;
+      font-weight: 600;
+    }
+  </style>
 </head>
 
 <body>
-<div class="stars"></div>
 
 <div id="app">
   <header>
-    <strong>MythicAi</strong>
-    <div>
-      <select id="mode">
-        <option value="general">General</option>
-        <option value="study">Study</option>
-        <option value="coding">Coding</option>
-        <option value="editing">Editing</option>
-      </select>
-    </div>
+    <span>MythicAi</span>
+    <select id="mode">
+      <option value="general">General</option>
+      <option value="study">Study</option>
+      <option value="coding">Coding</option>
+      <option value="editing">Editing</option>
+    </select>
   </header>
 
   <div id="messages"></div>
 
   <footer>
     <input id="input" placeholder="Message MythicAi…" />
-    <button class="send" onclick="send()">Send</button>
+    <button onclick="send()">Send</button>
   </footer>
 </div>
 
-<script>
-const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
+<!-- JS -->
+<script src="app.js"></script>
 
-let conversation = [];
-
-const modes = {
-  general: "You are MythicAi. Professional, friendly, chill.",
-  study: "You are MythicAi in study mode. Explain clearly with examples.",
-  coding: "You are MythicAi in coding mode. Give clean, correct code.",
-  editing: "You are MythicAi in editing mode. Help with CapCut, motion blur, workflows."
-};
-
-async function send() {
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = "";
-
-  const msgs = document.getElementById("messages");
-  const mode = document.getElementById("mode").value;
-
-  msgs.innerHTML += `<div class="msg user">${text}</div>`;
-  msgs.innerHTML += `<div class="msg ai typing" id="typing">MythicAi is thinking…</div>`;
-  msgs.scrollTop = msgs.scrollHeight;
-
-  if (conversation.length === 0) {
-    conversation.push({ role: "system", content: modes[mode] });
-  }
-
-  conversation.push({ role: "user", content: text });
-
-  const res = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: conversation })
-  });
-
-  const data = await res.json();
-  document.getElementById("typing").remove();
-
-  const reply = data.choices[0].message.content;
-  conversation.push({ role: "assistant", content: reply });
-
-  msgs.innerHTML += `<div class="msg ai">${reply}</div>`;
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-document.getElementById("input").addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
-});
-</script>
 </body>
 </html>
