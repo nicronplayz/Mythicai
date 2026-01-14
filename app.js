@@ -1,9 +1,10 @@
 // ==============================
-// MythicAi – app.js (REALISTIC)
+// MythicAi – app.js (FINAL FIX)
 // ==============================
 
 const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
 
+// Load saved conversation
 let conversation = JSON.parse(
   localStorage.getItem("mythicai_conversation")
 ) || [];
@@ -11,7 +12,7 @@ let conversation = JSON.parse(
 let isGenerating = false;
 let stopGeneration = false;
 
-// 🎛 Modes
+// Modes
 const modePrompts = {
   general: "You are MythicAi. Professional, friendly, chill.",
   study: "You are MythicAi in study mode. Explain clearly with examples.",
@@ -19,16 +20,20 @@ const modePrompts = {
   editing: "You are MythicAi in editing mode. Help with CapCut, motion blur, workflows."
 };
 
-// 🔁 Restore chat
+// ------------------------------
+// Restore messages on refresh
+// ------------------------------
 function restoreMessages() {
   const messages = document.getElementById("messages");
   messages.innerHTML = "";
 
   conversation.forEach(m => {
-    if (m.role === "user")
+    if (m.role === "user") {
       messages.innerHTML += `<div class="msg user">${m.content}</div>`;
-    if (m.role === "assistant")
+    }
+    if (m.role === "assistant") {
       messages.innerHTML += `<div class="msg ai">${m.content}</div>`;
+    }
   });
 
   messages.scrollTop = messages.scrollHeight;
@@ -41,26 +46,25 @@ function saveConversation() {
   );
 }
 
-// 🧹 New chat
-function newChat() {
-  stopGeneration = true;
-  conversation = [];
-  localStorage.removeItem("mythicai_conversation");
-  restoreMessages();
-}
-
-// 🟦 Cursor dot
+// ------------------------------
+// Cursor dot
+// ------------------------------
 function createCursor() {
   const cursor = document.createElement("span");
   cursor.textContent = "●";
   cursor.style.marginLeft = "4px";
   cursor.style.color = "#7dd3fc";
-  cursor.style.opacity = "0.8";
-  cursor.className = "cursor-dot";
+  cursor.style.opacity = "0.85";
   return cursor;
 }
 
-// ✍️ REAL typing engine (word-based)
+// ------------------------------
+// Human-like typing (word based)
+// ------------------------------
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 async function typeLikeHuman(element, text) {
   isGenerating = true;
   stopGeneration = false;
@@ -71,25 +75,23 @@ async function typeLikeHuman(element, text) {
   const cursor = createCursor();
   element.appendChild(cursor);
 
-  // 🧠 thinking delay
+  // Thinking delay
   await sleep(500 + Math.random() * 600);
 
   for (let i = 0; i < words.length; i++) {
     if (stopGeneration) break;
 
-    const word = words[i];
     element.insertBefore(
-      document.createTextNode(word + " "),
+      document.createTextNode(words[i] + " "),
       cursor
     );
 
-    element.scrollIntoView({ block: "end", behavior: "smooth" });
+    element.scrollIntoView({ behavior: "smooth", block: "end" });
 
-    // ⏱ human pauses
-    let delay = 60 + Math.random() * 90;
+    let delay = 70 + Math.random() * 120;
 
-    if (/[.,!?]$/.test(word)) delay += 200;
-    if (word.length > 8) delay += 80;
+    if (/[.,!?]$/.test(words[i])) delay += 250;
+    if (words[i].length > 8) delay += 100;
 
     await sleep(delay);
   }
@@ -98,12 +100,9 @@ async function typeLikeHuman(element, text) {
   isGenerating = false;
 }
 
-// 💤 helper
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-// 🚀 Send
+// ------------------------------
+// Send message
+// ------------------------------
 async function send() {
   if (isGenerating) return;
 
@@ -115,9 +114,11 @@ async function send() {
   const messages = document.getElementById("messages");
   const mode = document.getElementById("mode").value;
 
+  // User bubble
   messages.innerHTML += `<div class="msg user">${text}</div>`;
   messages.scrollTop = messages.scrollHeight;
 
+  // System prompt (once)
   if (!conversation.some(m => m.role === "system")) {
     conversation.unshift({
       role: "system",
@@ -128,10 +129,11 @@ async function send() {
   conversation.push({ role: "user", content: text });
   saveConversation();
 
-  // AI bubble
+  // AI bubble placeholder
   const aiBubble = document.createElement("div");
   aiBubble.className = "msg ai";
   messages.appendChild(aiBubble);
+  messages.scrollTop = messages.scrollHeight;
 
   try {
     const res = await fetch(WORKER_URL, {
@@ -141,21 +143,55 @@ async function send() {
     });
 
     const data = await res.json();
-    const reply =
-      data?.choices?.[0]?.message?.content ||
-      "I couldn’t generate a response.";
+
+    // ✅ REAL error handling
+    if (data.error) {
+      await typeLikeHuman(
+        aiBubble,
+        "⚠️ " + (data.error.message || data.error)
+      );
+      return;
+    }
+
+    if (!data.choices || !data.choices[0]) {
+      await typeLikeHuman(
+        aiBubble,
+        "⚠️ AI returned an empty response."
+      );
+      return;
+    }
+
+    const reply = data.choices[0].message.content;
 
     await typeLikeHuman(aiBubble, reply);
 
-    conversation.push({ role: "assistant", content: reply });
+    conversation.push({
+      role: "assistant",
+      content: reply
+    });
     saveConversation();
 
-  } catch (e) {
-    aiBubble.textContent = "⚠️ Connection error.";
+  } catch (err) {
+    await typeLikeHuman(
+      aiBubble,
+      "⚠️ Network error. Please try again."
+    );
   }
 }
 
-// ⌨️ Enter key
+// ------------------------------
+// New chat (optional)
+// ------------------------------
+function newChat() {
+  stopGeneration = true;
+  conversation = [];
+  localStorage.removeItem("mythicai_conversation");
+  restoreMessages();
+}
+
+// ------------------------------
+// Init
+// ------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   restoreMessages();
 
