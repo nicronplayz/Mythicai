@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MythicAi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #chat {
+      width: 100%;
+      max-width: 420px;
+      height: 90vh;
+      background: #020617;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      padding: 14px;
+      text-align: center;
+      background: #020617;
+      border-bottom: 1px solid #1e293b;
+      font-weight: 600;
+    }
+    #messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+    }
+    .msg {
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .user {
+      text-align: right;
+      color: #a5f3fc;
+    }
+    .ai {
+      text-align: left;
+      color: #38bdf8;
+    }
+    footer {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #1e293b;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: #020617;
+      color: white;
+    }
+    button {
+      margin-left: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      background: #38bdf8;
+      color: #020617;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chat">
+    <header>MythicAi</header>
+    <div id="messages"></div>
+    <footer>
+      <input id="input" placeholder="Ask MythicAi..." />
+      <button onclick="send()">Send</button>
+    </footer>
+  </div>
+
+<script>
+const WORKER_URL = "PASTE_YOUR_WORKER_URL_HERE";
+
+async function send() {
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  const messages = document.getElementById("messages");
+  messages.innerHTML += `<div class="msg user">${text}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+
+  const res = await fetch(WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [{ role: "user", content: text }]
+    })
+  });
+
+  const data = await res.json();
+  const reply = data.choices[0].message.content;
+
+  messages.innerHTML += `<div class="msg ai">${reply}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+}
+</script>
+</body>
+</html>
