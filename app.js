@@ -1,15 +1,17 @@
 // ==============================
-// MythicAi – app.js (Typing UX)
+// MythicAi – app.js (REALISTIC)
 // ==============================
 
 const WORKER_URL = "https://autumn-wue.killermunu.workers.dev/";
 
-// Load saved conversation
 let conversation = JSON.parse(
   localStorage.getItem("mythicai_conversation")
 ) || [];
 
-// Mode prompts
+let isGenerating = false;
+let stopGeneration = false;
+
+// 🎛 Modes
 const modePrompts = {
   general: "You are MythicAi. Professional, friendly, chill.",
   study: "You are MythicAi in study mode. Explain clearly with examples.",
@@ -17,24 +19,21 @@ const modePrompts = {
   editing: "You are MythicAi in editing mode. Help with CapCut, motion blur, workflows."
 };
 
-// Restore messages
+// 🔁 Restore chat
 function restoreMessages() {
-  const messagesDiv = document.getElementById("messages");
-  messagesDiv.innerHTML = "";
+  const messages = document.getElementById("messages");
+  messages.innerHTML = "";
 
-  conversation.forEach(msg => {
-    if (msg.role === "user") {
-      messagesDiv.innerHTML += `<div class="msg user">${msg.content}</div>`;
-    }
-    if (msg.role === "assistant") {
-      messagesDiv.innerHTML += `<div class="msg ai">${msg.content}</div>`;
-    }
+  conversation.forEach(m => {
+    if (m.role === "user")
+      messages.innerHTML += `<div class="msg user">${m.content}</div>`;
+    if (m.role === "assistant")
+      messages.innerHTML += `<div class="msg ai">${m.content}</div>`;
   });
 
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
 }
 
-// Save memory
 function saveConversation() {
   localStorage.setItem(
     "mythicai_conversation",
@@ -42,46 +41,83 @@ function saveConversation() {
   );
 }
 
-// ⌨️ TYPEWRITER EFFECT
-async function typeText(element, text, speed = 18) {
-  let i = 0;
-  element.innerHTML = "";
+// 🧹 New chat
+function newChat() {
+  stopGeneration = true;
+  conversation = [];
+  localStorage.removeItem("mythicai_conversation");
+  restoreMessages();
+}
 
+// 🟦 Cursor dot
+function createCursor() {
   const cursor = document.createElement("span");
   cursor.textContent = "●";
   cursor.style.marginLeft = "4px";
   cursor.style.color = "#7dd3fc";
   cursor.style.opacity = "0.8";
-
-  element.appendChild(cursor);
-
-  while (i < text.length) {
-    element.insertBefore(
-      document.createTextNode(text.charAt(i)),
-      cursor
-    );
-    i++;
-    await new Promise(r => setTimeout(r, speed));
-  }
-
-  cursor.remove(); // remove dot when done
+  cursor.className = "cursor-dot";
+  return cursor;
 }
 
-// 🚀 Send message
+// ✍️ REAL typing engine (word-based)
+async function typeLikeHuman(element, text) {
+  isGenerating = true;
+  stopGeneration = false;
+
+  const words = text.split(" ");
+  element.innerHTML = "";
+
+  const cursor = createCursor();
+  element.appendChild(cursor);
+
+  // 🧠 thinking delay
+  await sleep(500 + Math.random() * 600);
+
+  for (let i = 0; i < words.length; i++) {
+    if (stopGeneration) break;
+
+    const word = words[i];
+    element.insertBefore(
+      document.createTextNode(word + " "),
+      cursor
+    );
+
+    element.scrollIntoView({ block: "end", behavior: "smooth" });
+
+    // ⏱ human pauses
+    let delay = 60 + Math.random() * 90;
+
+    if (/[.,!?]$/.test(word)) delay += 200;
+    if (word.length > 8) delay += 80;
+
+    await sleep(delay);
+  }
+
+  cursor.remove();
+  isGenerating = false;
+}
+
+// 💤 helper
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// 🚀 Send
 async function send() {
+  if (isGenerating) return;
+
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text) return;
 
   input.value = "";
-  const messagesDiv = document.getElementById("messages");
+  const messages = document.getElementById("messages");
   const mode = document.getElementById("mode").value;
 
-  // User message
-  messagesDiv.innerHTML += `<div class="msg user">${text}</div>`;
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  messages.innerHTML += `<div class="msg user">${text}</div>`;
+  messages.scrollTop = messages.scrollHeight;
 
-  // System prompt (once)
   if (!conversation.some(m => m.role === "system")) {
     conversation.unshift({
       role: "system",
@@ -92,11 +128,10 @@ async function send() {
   conversation.push({ role: "user", content: text });
   saveConversation();
 
-  // Placeholder AI bubble
+  // AI bubble
   const aiBubble = document.createElement("div");
   aiBubble.className = "msg ai";
-  messagesDiv.appendChild(aiBubble);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  messages.appendChild(aiBubble);
 
   try {
     const res = await fetch(WORKER_URL, {
@@ -108,25 +143,19 @@ async function send() {
     const data = await res.json();
     const reply =
       data?.choices?.[0]?.message?.content ||
-      "Sorry, I couldn’t generate a response.";
+      "I couldn’t generate a response.";
 
-    // Type the reply slowly ✨
-    await typeText(aiBubble, reply, 16);
+    await typeLikeHuman(aiBubble, reply);
 
-    conversation.push({
-      role: "assistant",
-      content: reply
-    });
+    conversation.push({ role: "assistant", content: reply });
     saveConversation();
 
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-  } catch (err) {
-    aiBubble.textContent = "⚠️ Error connecting to MythicAi.";
+  } catch (e) {
+    aiBubble.textContent = "⚠️ Connection error.";
   }
 }
 
-// Enter key
+// ⌨️ Enter key
 document.addEventListener("DOMContentLoaded", () => {
   restoreMessages();
 
